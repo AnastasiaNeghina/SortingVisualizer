@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="SortingVisualizer.MainPage" NavigationPage.HasNavigationBar="False">
+  <StackLayout VerticalOptions="CenterAndExpand" HorizontalOptions="CenterAndExpand" Spacing="20">
+    <Label Text="Sorting Visualizer" FontSize="36" HorizontalOptions="Center"/>
+    <Label Text="Select a sorting algorithm to visualize" FontSize="18" HorizontalOptions="Center"/>
+    <Picker x:Name="AlgorithmPicker" Title="Select Sorting Algorithm" WidthRequest="250" />
+    <Button Text="Continue" Clicked="OnContinueClicked" WidthRequest="200" />
+  </StackLayout>
+</ContentPage>
