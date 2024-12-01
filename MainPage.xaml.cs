@@ -12,6 +12,7 @@ namespace SortingVisualizer
             AlgorithmPicker.Items.Add("Selection Sort");
             AlgorithmPicker.Items.Add("Merge Sort");
             AlgorithmPicker.Items.Add("Quick Sort");
+            AlgorithmPicker.Items.Add("Insertion Sort");
 
         }
 
