@@ -33,7 +33,7 @@ namespace SortingVisualizer
                 "Selection Sort" => "Selection Sort is an in-place comparison sorting algorithm. It works by dividing the list into a sorted and an unsorted part, then selecting the smallest element from the unsorted part.",
                 "Merge Sort" => "Merge Sort is a divide-and-conquer algorithm that splits the list into smaller sublists, sorts them, and then merges them back together.",
                 "Quick Sort" => "Quick Sort is an efficient divide-and-conquer algorithm that selects a 'pivot' element and partitions the array into two sub-arrays: elements less than the pivot and elements greater than the pivot. It then recursively sorts the sub-arrays.",
-                "Insertion Sort" => "Insertion Sort is a simple, in-place comparison-based sorting algorithm that builds the final sorted array one item at a time by repeatedly inserting elements into their correct position within the sorted part of the array",
+                "Insertion Sort" => "Insertion Sort is a simple, in-place comparison-based sorting algorithm that builds the final sorted array one item at a time by repeatedly inserting elements into their correct position within the sorted part of the array.",
                 _ => "",
             };
         }
