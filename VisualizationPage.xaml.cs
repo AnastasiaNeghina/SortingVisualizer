@@ -16,11 +16,20 @@ namespace SortingVisualizer
         public VisualizationPage(string selectedAlgorithm)
         {
             InitializeComponent();
+
+            // Initialize class variables
             _selectedAlgorithm = selectedAlgorithm;
+            _cancellationTokenSource = new CancellationTokenSource();
+
+            // Set up the algorithm title and description
             AlgorithmLabel.Text = selectedAlgorithm;
             DescriptionLabel.Text = GetAlgorithmDescription(selectedAlgorithm);
-            _cancellationTokenSource = new CancellationTokenSource();
-            OnGenerateArrayClicked(null, null); // Generate a random array initially
+
+            // Generate a random array initially
+            OnGenerateArrayClicked(null, null);
+
+            // Dynamically update the legend based on the algorithm
+            UpdateLegend(_selectedAlgorithm);
         }
 
         private string GetAlgorithmDescription(string algorithm)
@@ -105,112 +114,100 @@ namespace SortingVisualizer
         }
 
         // Bubble Sort
-private bool[] _finalPositionMarkers; // Field to track final positions
-private int _lastFinalPositionIndex; // Track the most recent final position
+        private bool[] _finalPositionMarkers; // Field to track final positions
+        private int _lastFinalPositionIndex; // Track the most recent final position
 
-private async Task BubbleSortVisual(int[] array, CancellationToken cancellationToken)
-{
-    int n = array.Length;
-    
-    // Initialize the final position markers
-    _finalPositionMarkers = new bool[n];
-    _lastFinalPositionIndex = -1;
-
-    for (int i = 0; i < n - 1; i++)
-    {
-        bool swapped = false;
-
-        for (int j = 0; j < n - i - 1; j++)
+        private async Task BubbleSortVisual(int[] array, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            int n = array.Length;
 
-            // Highlight the comparison bars in orange
-            await UpdateVisualizationGridBubble(array, j, j + 1, Colors.Orange);
-            await Task.Delay(1000, cancellationToken);
+            // Initialize the final position markers
+            _finalPositionMarkers = new bool[n];
+            _lastFinalPositionIndex = -1;
 
-            if (array[j] > array[j + 1])
+            for (int i = 0; i < n - 1; i++)
             {
-                // Mark the largest element's final position in this pass
-                _lastFinalPositionIndex = n - i - 1;
+                bool swapped = false;
 
-                // Swap elements visually
-                await SmoothSwap(j, j + 1);
+                for (int j = 0; j < n - i - 1; j++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                // Perform the actual shift in the array
-                (array[j], array[j + 1]) = (array[j + 1], array[j]);
-                swapped = true;
+                    await UpdateVisualizationGridBubble(array, j, j + 1, Colors.Orange);
+                    await Task.Delay(1000, cancellationToken);
 
-                // Update the visualization - keep the comparison bars orange
-                await UpdateVisualizationGridBubble(array, j, j + 1);
-                await Task.Delay(500, cancellationToken);
+                    if (array[j] > array[j + 1])
+                    {
+                        _lastFinalPositionIndex = n - i - 1;
+
+                        await SmoothSwap(j, j + 1);
+
+                        (array[j], array[j + 1]) = (array[j + 1], array[j]);
+                        swapped = true;
+
+                        await UpdateVisualizationGridBubble(array, j, j + 1);
+                        await Task.Delay(500, cancellationToken);
+                    }
+                    else
+                    {
+                        await UpdateVisualizationGridBubble(array, j, j + 1);
+                        await Task.Delay(500, cancellationToken);
+                    }
+                }
+
+                if (!swapped)
+                {
+                    for (int k = n - i - 1; k < n; k++)
+                    {
+                        _finalPositionMarkers[k] = true;
+                    }
+                    break;
+                }
+                else
+                {
+                    _finalPositionMarkers[_lastFinalPositionIndex] = true;
+                }
             }
-            else
+
+            await UpdateVisualizationGridBubble(array);
+        }
+
+        private async Task UpdateVisualizationGridBubble(int[] data, int left = -1, int right = -1, Color highlightColor = default)
+        {
+            double maxHeight = 300;
+            int maxDataValue = data.Max();
+
+            for (int i = 0; i < data.Length; i++)
             {
-                // Update the visualization - reset the comparison bars to default color
-                await UpdateVisualizationGridBubble(array, j, j + 1);
-                await Task.Delay(500, cancellationToken);
+                var stackLayout = VisualizationGrid.Children[i] as StackLayout;
+                var boxView = stackLayout.Children[0] as BoxView;
+                var label = stackLayout.Children[1] as Label;
+
+                boxView.Color = Colors.CornflowerBlue;
+
+                // Check if the element is in its final sorted position
+                if (_finalPositionMarkers != null && _finalPositionMarkers[i])
+                {
+                    boxView.Color = Colors.BlueViolet;
+                }
+
+                // Color the comparison bars in orange
+                if (i >= left && i <= right)
+                {
+                    boxView.Color = Colors.Orange;
+                }
+
+                // Update height if needed
+                double relativeHeight = maxDataValue > 0 ? (data[i] / (double)maxDataValue) * (maxHeight * 0.9) : 0;
+                boxView.HeightRequest = relativeHeight;
+                label.Text = data[i].ToString();
             }
+
+            // Optional: Add a small delay to make color changes visible
+            await Task.Delay(200);
         }
 
-        // Mark the last element of this pass as in its final position
-        if (!swapped)
-        {
-            // If no swaps occurred, all remaining elements are in their final position
-            for (int k = n - i - 1; k < n; k++)
-            {
-                _finalPositionMarkers[k] = true;
-            }
-            break;
-        }
-        else
-        {
-            // Mark the last element of this pass as in its final position
-            _finalPositionMarkers[_lastFinalPositionIndex] = true;
-        }
-    }
-
-    // Final pass to ensure all sorted elements are marked
-    await UpdateVisualizationGridBubble(array);
-}
-
-private async Task UpdateVisualizationGridBubble(int[] data, int left = -1, int right = -1, Color highlightColor = default)
-{
-    double maxHeight = 300; // Fixed maximum height for the bars
-    int maxDataValue = data.Max();
-
-    // Update existing children
-    for (int i = 0; i < data.Length; i++)
-    {
-        var stackLayout = VisualizationGrid.Children[i] as StackLayout;
-        var boxView = stackLayout.Children[0] as BoxView;
-        var label = stackLayout.Children[1] as Label;
-
-        // Default color
-        boxView.Color = Colors.CornflowerBlue;
-
-        // Check if the element is in its final sorted position
-        if (_finalPositionMarkers != null && _finalPositionMarkers[i])
-        {
-            boxView.Color = Colors.BlueViolet;
-        }
-
-        // Color the comparison bars in orange
-        if (i >= left && i <= right)
-        {
-            boxView.Color = Colors.Orange;
-        }
-
-        // Update height if needed
-        double relativeHeight = maxDataValue > 0 ? (data[i] / (double)maxDataValue) * (maxHeight * 0.9) : 0;
-        boxView.HeightRequest = relativeHeight;
-        label.Text = data[i].ToString();
-    }
-
-    // Optional: Add a small delay to make color changes visible
-    await Task.Delay(200);
-}
-
-  // Selection Sort
+        // Selection Sort
         private async Task SelectionSortVisual(int[] array, CancellationToken cancellationToken)
         {
             HashSet<int> sortedIndices = new HashSet<int>();
@@ -326,86 +323,86 @@ private async Task UpdateVisualizationGridBubble(int[] data, int left = -1, int 
         }
 
         private async Task Merge(int[] array, int left, int middle, int right, CancellationToken cancellationToken)
-{
-    int n1 = middle - left + 1;
-    int n2 = right - middle;
-
-    // Create temporary arrays
-    int[] leftArray = new int[n1];
-    int[] rightArray = new int[n2];
-
-    // Copy data to temporary arrays
-    Array.Copy(array, left, leftArray, 0, n1);
-    Array.Copy(array, middle + 1, rightArray, 0, n2);
-
-    int iLeft = 0, iRight = 0;
-    int k = left;
-
-    // SmoothSwap Merge Implementation
-    while (iLeft < n1 && iRight < n2)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (leftArray[iLeft] <= rightArray[iRight])
         {
-            // If the current element is already in the correct position, skip unnecessary swap
-            if (array[k] != leftArray[iLeft])
+            int n1 = middle - left + 1;
+            int n2 = right - middle;
+
+            // Create temporary arrays
+            int[] leftArray = new int[n1];
+            int[] rightArray = new int[n2];
+
+            // Copy data to temporary arrays
+            Array.Copy(array, left, leftArray, 0, n1);
+            Array.Copy(array, middle + 1, rightArray, 0, n2);
+
+            int iLeft = 0, iRight = 0;
+            int k = left;
+
+            // SmoothSwap Merge Implementation
+            while (iLeft < n1 && iRight < n2)
             {
-                array[k] = leftArray[iLeft];
-                await UpdateVisualizationGridMergeImproved(array, left, right);
-                await Task.Delay(500, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (leftArray[iLeft] <= rightArray[iRight])
+                {
+                    // If the current element is already in the correct position, skip unnecessary swap
+                    if (array[k] != leftArray[iLeft])
+                    {
+                        array[k] = leftArray[iLeft];
+                        await UpdateVisualizationGridMergeImproved(array, left, right);
+                        await Task.Delay(500, cancellationToken);
+                    }
+                    iLeft++;
+                }
+                else
+                {
+                    // If the current element is already in the correct position, skip unnecessary swap
+                    if (array[k] != rightArray[iRight])
+                    {
+                        array[k] = rightArray[iRight];
+                        await UpdateVisualizationGridMergeImproved(array, left, right);
+                        await Task.Delay(500, cancellationToken);
+                    }
+                    iRight++;
+                }
+
+                k++;
             }
-            iLeft++;
-        }
-        else
-        {
-            // If the current element is already in the correct position, skip unnecessary swap
-            if (array[k] != rightArray[iRight])
+
+            // Handle remaining elements in leftArray
+            while (iLeft < n1)
             {
-                array[k] = rightArray[iRight];
-                await UpdateVisualizationGridMergeImproved(array, left, right);
-                await Task.Delay(500, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // SmoothSwap: Only update if the value is different
+                if (array[k] != leftArray[iLeft])
+                {
+                    array[k] = leftArray[iLeft];
+                    await UpdateVisualizationGridMergeImproved(array, left, right);
+                    await Task.Delay(500, cancellationToken);
+                }
+
+                iLeft++;
+                k++;
             }
-            iRight++;
-        }
 
-        k++;
-    }
+            // Handle remaining elements in rightArray
+            while (iRight < n2)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-    // Handle remaining elements in leftArray
-    while (iLeft < n1)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        
-        // SmoothSwap: Only update if the value is different
-        if (array[k] != leftArray[iLeft])
-        {
-            array[k] = leftArray[iLeft];
-            await UpdateVisualizationGridMergeImproved(array, left, right);
-            await Task.Delay(500, cancellationToken);
-        }
-        
-        iLeft++;
-        k++;
-    }
+                // SmoothSwap: Only update if the value is different
+                if (array[k] != rightArray[iRight])
+                {
+                    array[k] = rightArray[iRight];
+                    await UpdateVisualizationGridMergeImproved(array, left, right);
+                    await Task.Delay(500, cancellationToken);
+                }
 
-    // Handle remaining elements in rightArray
-    while (iRight < n2)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        
-        // SmoothSwap: Only update if the value is different
-        if (array[k] != rightArray[iRight])
-        {
-            array[k] = rightArray[iRight];
-            await UpdateVisualizationGridMergeImproved(array, left, right);
-            await Task.Delay(500, cancellationToken);
+                iRight++;
+                k++;
+            }
         }
-        
-        iRight++;
-        k++;
-    }
-}
 
         private async Task UpdateVisualizationGridMergeImproved(int[] data, int left, int right)
         {
@@ -449,230 +446,230 @@ private async Task UpdateVisualizationGridBubble(int[] data, int left = -1, int 
         }
 
         // Quick Sort
-private HashSet<int> sortedIndices = new HashSet<int>();
+        private HashSet<int> sortedIndices = new HashSet<int>();
 
-public async Task QuickSortVisual(int[] array, int left, int right, CancellationToken cancellationToken)
-{
-    if (left == 0 && right == array.Length - 1) // Clear sorted indices at the beginning of sorting
-    {
-        sortedIndices.Clear();
-    }
-
-    if (left < right)
-    {
-        int pivotIndex = await Partition(array, left, right, cancellationToken);
-
-        // Mark pivot as sorted and update visualization
-        sortedIndices.Add(pivotIndex);
-        await UpdateVisualizationGridQuick(array, pivotIndex, pivotIndex, Colors.BlueViolet);
-        await Task.Delay(500, cancellationToken);
-
-        // Recursively sort the sub-arrays
-        await QuickSortVisual(array, left, pivotIndex - 1, cancellationToken);
-        await QuickSortVisual(array, pivotIndex + 1, right, cancellationToken);
-    }
-    else if (left == right) // Handle the case where a single element is sorted
-    {
-        sortedIndices.Add(left);
-        await UpdateVisualizationGridQuick(array, left, left, Colors.BlueViolet);
-    }
-}
-
-private async Task<int> Partition(int[] array, int left, int right, CancellationToken cancellationToken)
-{
-    int pivot = array[right];
-    int i = left - 1;
-
-    // Highlight pivot element once at the start
-    await UpdateVisualizationGridQuick(array, right, right, Colors.Red);
-    await Task.Delay(500, cancellationToken);
-
-    for (int j = left; j < right; j++)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Highlight current comparison with a different color
-        await UpdateVisualizationGridQuick(array, right, j, Colors.Red, Colors.Orange);
-        await Task.Delay(500, cancellationToken);
-
-        if (array[j] <= pivot)
+        public async Task QuickSortVisual(int[] array, int left, int right, CancellationToken cancellationToken)
         {
-            i++;
-            await SmoothSwap(i, j);
+            if (left == 0 && right == array.Length - 1) // Clear sorted indices at the beginning of sorting
+            {
+                sortedIndices.Clear();
+            }
 
-            // Perform actual swap in the array
-            (array[i], array[j]) = (array[j], array[i]);
+            if (left < right)
+            {
+                int pivotIndex = await Partition(array, left, right, cancellationToken);
 
-            // Update visualization after swap
-            await UpdateVisualizationGridQuick(array, right, i, Colors.Red);
+                // Mark pivot as sorted and update visualization
+                sortedIndices.Add(pivotIndex);
+                await UpdateVisualizationGridQuick(array, pivotIndex, pivotIndex, Colors.BlueViolet);
+                await Task.Delay(500, cancellationToken);
+
+                // Recursively sort the sub-arrays
+                await QuickSortVisual(array, left, pivotIndex - 1, cancellationToken);
+                await QuickSortVisual(array, pivotIndex + 1, right, cancellationToken);
+            }
+            else if (left == right) // Handle the case where a single element is sorted
+            {
+                sortedIndices.Add(left);
+                await UpdateVisualizationGridQuick(array, left, left, Colors.BlueViolet);
+            }
+        }
+
+        private async Task<int> Partition(int[] array, int left, int right, CancellationToken cancellationToken)
+        {
+            int pivot = array[right];
+            int i = left - 1;
+
+            // Highlight pivot element once at the start
+            await UpdateVisualizationGridQuick(array, right, right, Colors.Red);
             await Task.Delay(500, cancellationToken);
-        }
-    }
 
-    // Swap array[i + 1] and array[right] to put pivot in correct position
-    await SmoothSwap(i + 1, right);
-    (array[i + 1], array[right]) = (array[right], array[i + 1]);
-
-    // Mark the pivot element as sorted and update visualization
-    sortedIndices.Add(i + 1);
-    await UpdateVisualizationGridQuick(array, i + 1, i + 1, Colors.BlueViolet);
-    await Task.Delay(500, cancellationToken);
-
-    return i + 1;
-}
-
-private async Task UpdateVisualizationGridQuick(int[] data, int pivotIndex = -1, int compareIndex = -1, Color pivotColor = default, Color compareColor = default)
-{
-    double maxHeight = VisualizationGrid.Height > 0 ? VisualizationGrid.Height : 300;
-    int maxDataValue = data.Max();
-    int pivot = pivotIndex >= 0 ? data[pivotIndex] : -1;
-
-    for (int i = 0; i < data.Length; i++)
-    {
-        var stackLayout = VisualizationGrid.Children[i] as StackLayout;
-        if (stackLayout == null) continue;
-
-        var boxView = stackLayout.Children[0] as BoxView;
-        if (boxView == null) continue;
-
-        var label = stackLayout.Children[1] as Label;
-        if (label == null) continue;
-
-        // Update height and label text
-        double relativeHeight = maxDataValue > 0 ? (data[i] / (double)maxDataValue) * (maxHeight * 0.9) : 0;
-        boxView.HeightRequest = relativeHeight;
-        label.Text = data[i].ToString();
-
-        // Set color based on sorted indices, pivot, or current highlighting
-        if (sortedIndices.Contains(i))
-        {
-            boxView.Color = Colors.BlueViolet;
-        }
-        else if (pivot != -1)
-        {
-            if (data[i] < pivot)
+            for (int j = left; j < right; j++)
             {
-                boxView.Color = Colors.Coral; // Elements less than pivot
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Highlight current comparison with a different color
+                await UpdateVisualizationGridQuick(array, right, j, Colors.Red, Colors.Orange);
+                await Task.Delay(500, cancellationToken);
+
+                if (array[j] <= pivot)
+                {
+                    i++;
+                    await SmoothSwap(i, j);
+
+                    // Perform actual swap in the array
+                    (array[i], array[j]) = (array[j], array[i]);
+
+                    // Update visualization after swap
+                    await UpdateVisualizationGridQuick(array, right, i, Colors.Red);
+                    await Task.Delay(500, cancellationToken);
+                }
             }
-            else if (data[i] > pivot)
+
+            // Swap array[i + 1] and array[right] to put pivot in correct position
+            await SmoothSwap(i + 1, right);
+            (array[i + 1], array[right]) = (array[right], array[i + 1]);
+
+            // Mark the pivot element as sorted and update visualization
+            sortedIndices.Add(i + 1);
+            await UpdateVisualizationGridQuick(array, i + 1, i + 1, Colors.BlueViolet);
+            await Task.Delay(500, cancellationToken);
+
+            return i + 1;
+        }
+
+        private async Task UpdateVisualizationGridQuick(int[] data, int pivotIndex = -1, int compareIndex = -1, Color pivotColor = default, Color compareColor = default)
+        {
+            double maxHeight = VisualizationGrid.Height > 0 ? VisualizationGrid.Height : 300;
+            int maxDataValue = data.Max();
+            int pivot = pivotIndex >= 0 ? data[pivotIndex] : -1;
+
+            for (int i = 0; i < data.Length; i++)
             {
-                boxView.Color = Colors.Green; // Elements greater than pivot
+                var stackLayout = VisualizationGrid.Children[i] as StackLayout;
+                if (stackLayout == null) continue;
+
+                var boxView = stackLayout.Children[0] as BoxView;
+                if (boxView == null) continue;
+
+                var label = stackLayout.Children[1] as Label;
+                if (label == null) continue;
+
+                // Update height and label text
+                double relativeHeight = maxDataValue > 0 ? (data[i] / (double)maxDataValue) * (maxHeight * 0.9) : 0;
+                boxView.HeightRequest = relativeHeight;
+                label.Text = data[i].ToString();
+
+                // Set color based on sorted indices, pivot, or current highlighting
+                if (sortedIndices.Contains(i))
+                {
+                    boxView.Color = Colors.BlueViolet;
+                }
+                else if (pivot != -1)
+                {
+                    if (data[i] < pivot)
+                    {
+                        boxView.Color = Colors.Coral; // Elements less than pivot
+                    }
+                    else if (data[i] > pivot)
+                    {
+                        boxView.Color = Colors.Green; // Elements greater than pivot
+                    }
+                    else // data[i] == pivot
+                    {
+                        boxView.Color = Colors.Yellow; // Elements equal to pivot
+                    }
+                }
+
+                // Pivot and comparison highlighting
+                if (i == pivotIndex)
+                {
+                    boxView.Color = pivotColor == default ? Colors.Red : pivotColor;
+                }
+                else if (i == compareIndex)
+                {
+                    boxView.Color = compareColor == default ? Colors.Orange : compareColor;
+                }
+
+                // Default color if no other condition is met
+                if (boxView.Color == default)
+                {
+                    boxView.Color = Colors.CornflowerBlue;
+                }
             }
-            else // data[i] == pivot
-            {
-                boxView.Color = Colors.Yellow; // Elements equal to pivot
-            }
-        }
 
-        // Pivot and comparison highlighting
-        if (i == pivotIndex)
-        {
-            boxView.Color = pivotColor == default ? Colors.Red : pivotColor;
+            await Task.CompletedTask;
         }
-        else if (i == compareIndex)
-        {
-            boxView.Color = compareColor == default ? Colors.Orange : compareColor;
-        }
-
-        // Default color if no other condition is met
-        if (boxView.Color == default)
-        {
-            boxView.Color = Colors.CornflowerBlue;
-        }
-    }
-
-    await Task.CompletedTask;
-}
 
         // Insertion Sort
-private async Task UpdateVisualizationGridInsertion(int[] data, int keyValue = -1, int compareIndex = -1, Color highlightColor = default)
-{
-    double maxHeight = 300; // Fixed maximum height for the bars
-    int maxDataValue = data.Max();
-
-    // Update existing children
-    for (int i = 0; i < data.Length; i++)
-    {
-        var stackLayout = VisualizationGrid.Children[i] as StackLayout;
-        var boxView = stackLayout.Children[0] as BoxView;
-        var label = stackLayout.Children[1] as Label;
-
-        // Reset default color for all elements
-        boxView.Color = Colors.CornflowerBlue;
-
-        // Color the bar containing the key value in coral until it finds its place
-        if (data[i] == keyValue)
+        private async Task UpdateVisualizationGridInsertion(int[] data, int keyValue = -1, int compareIndex = -1, Color highlightColor = default)
         {
-            boxView.Color = Colors.Red;
+            double maxHeight = 300; // Fixed maximum height for the bars
+            int maxDataValue = data.Max();
+
+            // Update existing children
+            for (int i = 0; i < data.Length; i++)
+            {
+                var stackLayout = VisualizationGrid.Children[i] as StackLayout;
+                var boxView = stackLayout.Children[0] as BoxView;
+                var label = stackLayout.Children[1] as Label;
+
+                // Reset default color for all elements
+                boxView.Color = Colors.CornflowerBlue;
+
+                // Color the bar containing the key value in coral until it finds its place
+                if (data[i] == keyValue)
+                {
+                    boxView.Color = Colors.Red;
+                }
+
+                // Color the comparison bar in orange only when actively compared
+                if (i == compareIndex)
+                {
+                    boxView.Color = Colors.Orange;
+                }
+
+                // Color the bar containing the key value in blueviolet when it reaches its final position
+                if (highlightColor == Colors.BlueViolet && data[i] == keyValue)
+                {
+                    boxView.Color = Colors.BlueViolet;
+                }
+
+                // Update height if needed
+                double relativeHeight = maxDataValue > 0 ? (data[i] / (double)maxDataValue) * (maxHeight * 0.9) : 0;
+                boxView.HeightRequest = relativeHeight;
+                label.Text = data[i].ToString();
+            }
+
+            // Optional: Add a small delay to make color changes visible
+            await Task.Delay(200);
         }
 
-        // Color the comparison bar in orange only when actively compared
-        if (i == compareIndex)
+        public async Task InsertionSortVisual(int[] array, CancellationToken cancellationToken)
         {
-            boxView.Color = Colors.Orange;
-        }
+            int key = array[1];
 
-        // Color the bar containing the key value in blueviolet when it reaches its final position
-        if (highlightColor == Colors.BlueViolet && data[i] == keyValue)
-        {
-            boxView.Color = Colors.BlueViolet;
-        }
-
-        // Update height if needed
-        double relativeHeight = maxDataValue > 0 ? (data[i] / (double)maxDataValue) * (maxHeight * 0.9) : 0;
-        boxView.HeightRequest = relativeHeight;
-        label.Text = data[i].ToString();
-    }
-
-    // Optional: Add a small delay to make color changes visible
-    await Task.Delay(200);
-}
-
-public async Task InsertionSortVisual(int[] array, CancellationToken cancellationToken)
-{
-    int key = array[1];
-
-    // Highlight the key value in coral
-    await UpdateVisualizationGridInsertion(array, key, -1, Colors.Red);
-    await Task.Delay(500, cancellationToken);
-
-    for (int i = 1; i < array.Length; i++)
-    {
-        key = array[i];
-        int j = i - 1;
-
-        // Continue while the current element is greater than the key and shift the elements
-        while (j >= 0 && array[j] > key)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Highlight the comparison bar in orange
-            await UpdateVisualizationGridInsertion(array, key, j, Colors.Orange);
+            // Highlight the key value in coral
+            await UpdateVisualizationGridInsertion(array, key, -1, Colors.Red);
             await Task.Delay(500, cancellationToken);
 
-            // Swap elements visually
-            await SmoothSwap(j, j + 1);
+            for (int i = 1; i < array.Length; i++)
+            {
+                key = array[i];
+                int j = i - 1;
 
-            // Perform the actual shift in the array
-            (array[j + 1], array[j]) = (array[j], array[j + 1]);
+                // Continue while the current element is greater than the key and shift the elements
+                while (j >= 0 && array[j] > key)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-            // Update the visualization - keep key coral and reset comparison to default
-            await UpdateVisualizationGridInsertion(array, key, -1);
-            await Task.Delay(500, cancellationToken);
+                    // Highlight the comparison bar in orange
+                    await UpdateVisualizationGridInsertion(array, key, j, Colors.Orange);
+                    await Task.Delay(500, cancellationToken);
 
-            // Decrement `j` to continue comparing and shifting if necessary
-            j--;
+                    // Swap elements visually
+                    await SmoothSwap(j, j + 1);
+
+                    // Perform the actual shift in the array
+                    (array[j + 1], array[j]) = (array[j], array[j + 1]);
+
+                    // Update the visualization - keep key coral and reset comparison to default
+                    await UpdateVisualizationGridInsertion(array, key, -1);
+                    await Task.Delay(500, cancellationToken);
+
+                    // Decrement `j` to continue comparing and shifting if necessary
+                    j--;
+                }
+
+                // Place the key in the correct position and color it blueviolet
+                array[j + 1] = key;
+                await UpdateVisualizationGridInsertion(array, key, -1, Colors.BlueViolet);
+                await Task.Delay(500, cancellationToken);
+            }
+
+            // Reset all to default color at the end
+            await UpdateVisualizationGridInsertion(array);
         }
-
-        // Place the key in the correct position and color it blueviolet
-        array[j + 1] = key;
-        await UpdateVisualizationGridInsertion(array, key, -1, Colors.BlueViolet);
-        await Task.Delay(500, cancellationToken);
-    }
-
-    // Reset all to default color at the end
-    await UpdateVisualizationGridInsertion(array);
-}
 
 
         // Smooth Swap Animation
@@ -783,5 +780,114 @@ public async Task InsertionSortVisual(int[] array, CancellationToken cancellatio
         {
             await Navigation.PopAsync();
         }
+
+        private void UpdateLegend(string algorithm)
+        {
+            // Clear previous legend items from the grid
+            LegendGrid.Children.Clear();
+
+            // Reset the grid structure
+            LegendGrid.RowDefinitions.Clear();
+            LegendGrid.ColumnDefinitions.Clear();
+            LegendGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Color column
+            LegendGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star }); // Text column
+
+            // Add the first row for the legend title
+            LegendGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Label titleLabel = new Label
+            {
+                Text = "Legend:",
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 16,
+                HorizontalOptions = LayoutOptions.Start
+            };
+            Grid.SetRow(titleLabel, 0);
+            Grid.SetColumn(titleLabel, 0);
+            Grid.SetColumnSpan(titleLabel, 2); // Span both columns
+            LegendGrid.Children.Add(titleLabel);
+
+            // Add legend items based on the algorithm
+            int currentRow = 1; // Start from the row after the title
+            switch (algorithm)
+            {
+                case "Bubble Sort":
+                    AddLegendItem(LegendGrid, "Comparison Elements", Colors.Orange, currentRow++);
+                    AddLegendItem(LegendGrid, "Sorted", Colors.BlueViolet, currentRow++);
+                    break;
+
+                case "Selection Sort":
+                    AddLegendItem(LegendGrid, "Current Minimum", Colors.Red, currentRow++);
+                    AddLegendItem(LegendGrid, "Current Comparison", Colors.Orange, currentRow++);
+                    AddLegendItem(LegendGrid, "Sorted", Colors.BlueViolet, currentRow++);
+                    break;
+
+                case "Merge Sort":
+                    AddLegendItem(LegendGrid, "Active Subarray / Sorted", Colors.BlueViolet, currentRow++);
+                    AddLegendItem(LegendGrid, "Inactive Subarray", Colors.Gray, currentRow++);
+                    break;
+
+                case "Quick Sort":
+                    AddLegendItem(LegendGrid, "Pivot", Colors.Red, currentRow++);
+                    AddLegendItem(LegendGrid, "Elements equal to pivot", Colors.Yellow, currentRow++);
+                    AddLegendItem(LegendGrid, "Elements less than pivot", Colors.Coral, currentRow++);
+                    AddLegendItem(LegendGrid, "Elements greater than pivot", Colors.Green, currentRow++);
+                    AddLegendItem(LegendGrid, "Current Comparison", Colors.Orange, currentRow++);
+                    AddLegendItem(LegendGrid, "Sorted", Colors.BlueViolet, currentRow++);
+                    break;
+
+                case "Insertion Sort":
+                    AddLegendItem(LegendGrid, "Current Minimum", Colors.Red, currentRow++);
+                    AddLegendItem(LegendGrid, "Current Comparison", Colors.Orange, currentRow++);
+                    AddLegendItem(LegendGrid, "Sorted", Colors.BlueViolet, currentRow++);
+                    break;
+
+                default:
+                    AddLegendItem(LegendGrid, "No specific legend available.", Colors.Gray, currentRow++);
+                    break;
+            }
+        }
+
+        private void AddLegendItem(Grid grid, string text, Color color, int row)
+        {
+            // Add a new row definition for each legend item
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // Create a square rounded color indicator
+            Frame colorIndicator = new Frame
+            {
+                BackgroundColor = color,
+                CornerRadius = 5, // Smaller value for rounded square corners
+                WidthRequest = 20,
+                HeightRequest = 20,
+                VerticalOptions = LayoutOptions.Center,
+                HorizontalOptions = LayoutOptions.Start,
+                HasShadow = false,
+                Padding = 0
+            };
+
+            // Create the legend description label
+            Label legendDescription = new Label
+            {
+                Text = text,
+                FontSize = 14,
+                FontFamily = "Arial", // Example font, customize as needed
+                FontAttributes = FontAttributes.None,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Center,
+                Margin = new Thickness(10, 0, 0, 0) // Add spacing between the color and text
+            };
+
+            // Add the color indicator to the grid
+            Grid.SetRow(colorIndicator, row);
+            Grid.SetColumn(colorIndicator, 0);
+            grid.Children.Add(colorIndicator);
+
+            // Add the legend description to the grid
+            Grid.SetRow(legendDescription, row);
+            Grid.SetColumn(legendDescription, 1);
+            grid.Children.Add(legendDescription);
+        }
+
+
     }
 }

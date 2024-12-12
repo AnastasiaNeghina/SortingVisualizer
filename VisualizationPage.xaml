@@ -1,12 +1,44 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="SortingVisualizer.VisualizationPage" NavigationPage.HasNavigationBar="False">
-  <StackLayout Spacing="15" Padding="20">
-    <Label x:Name="AlgorithmLabel" FontSize="28" HorizontalOptions="Center"/>
-    <Label x:Name="DescriptionLabel" FontSize="16" Padding="10"/>
-    <Button x:Name="GenerateArrayButton" Text="Generate Array" Clicked="OnGenerateArrayClicked" WidthRequest="200" HorizontalOptions="Center" />
-    <Button x:Name="StartCancelButton" Text="Execute Sort" Clicked="OnStartCancelClicked" WidthRequest="200" HorizontalOptions="Center" />
-    <Button x:Name="ResetButton" Text="Reset" Clicked="OnResetClicked" WidthRequest="200" HorizontalOptions="Center" />
-    <Grid x:Name="VisualizationGrid" VerticalOptions="FillAndExpand" HorizontalOptions="FillAndExpand" RowSpacing="5" ColumnSpacing="5" BackgroundColor="LightGray" />
-    <Button Text="Back to Main Page" Clicked="OnBackToMainPageClicked" WidthRequest="200" HorizontalOptions="Center" />
-  </StackLayout>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SortingVisualizer.VisualizationPage"
+             NavigationPage.HasNavigationBar="False">
+
+  <!-- Scrollable Layout -->
+  <ScrollView>
+    <StackLayout Spacing="15" Padding="20">
+
+      <!-- Title and Description -->
+      <Label x:Name="AlgorithmLabel" FontSize="28" HorizontalOptions="Center" />
+      <Label x:Name="DescriptionLabel" FontSize="16" Padding="10" />
+
+      <!-- Action Buttons -->
+      <StackLayout Orientation="Vertical" HorizontalOptions="Center" Spacing="10">
+        <Button x:Name="GenerateArrayButton" Text="Generate Array" 
+                Clicked="OnGenerateArrayClicked" WidthRequest="200" />
+        <Button x:Name="StartCancelButton" Text="Execute Sort" 
+                Clicked="OnStartCancelClicked" WidthRequest="200" />
+        <Button x:Name="ResetButton" Text="Reset" 
+                Clicked="OnResetClicked" WidthRequest="200" />
+      </StackLayout>
+
+      <!-- Visualization Grid -->
+      <Grid x:Name="VisualizationGrid" VerticalOptions="FillAndExpand" 
+            HorizontalOptions="FillAndExpand" RowSpacing="5" 
+            ColumnSpacing="5" BackgroundColor="LightGray"
+            HeightRequest="200" />
+
+      <!-- Legend Section -->
+      <Grid x:Name="LegendGrid" 
+            RowSpacing="5" 
+            ColumnSpacing="15" 
+            HorizontalOptions="FillAndExpand">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" /> <!-- For Color Indicators -->
+          <ColumnDefinition Width="*" />   <!-- For Text Descriptions -->
+        </Grid.ColumnDefinitions>
+      </Grid>
+
+    </StackLayout>
+  </ScrollView>
 </ContentPage>
