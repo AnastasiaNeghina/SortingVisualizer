@@ -13,6 +13,7 @@ namespace SortingVisualizer
         private CancellationTokenSource _cancellationTokenSource;
         private int[] _data;
 
+
         public VisualizationPage(string selectedAlgorithm)
         {
             InitializeComponent();
@@ -46,11 +47,19 @@ namespace SortingVisualizer
         }
 
         private void OnGenerateArrayClicked(object sender, EventArgs e)
-        {
-            Random random = new Random();
-            _data = Enumerable.Range(1, 20).Select(x => random.Next(1, 100)).ToArray();
-            InitializeVisualizationGrid();
-        }
+{
+    Random random = new Random();
+    
+    // Generate a range of unique numbers (1 to 100) and shuffle them
+    _data = Enumerable.Range(1, 99) // Create a range of numbers from 1 to 100
+                      .OrderBy(x => random.Next()) // Shuffle the numbers randomly
+                      .Take(20) // Take the first 20 numbers
+                      .ToArray(); // Convert to array
+
+    // Initialize the visualization grid with the unique array
+    InitializeVisualizationGrid();
+}
+
 
         private void InitializeVisualizationGrid()
         {
@@ -549,11 +558,11 @@ namespace SortingVisualizer
                 {
                     if (data[i] < pivot)
                     {
-                        boxView.Color = Colors.Coral; // Elements less than pivot
+                        boxView.Color = Colors.Green; // Elements less than pivot
                     }
                     else if (data[i] > pivot)
                     {
-                        boxView.Color = Colors.Green; // Elements greater than pivot
+                        boxView.Color = Colors.DarkBlue; // Elements greater than pivot
                     }
                     else // data[i] == pivot
                     {
@@ -582,94 +591,122 @@ namespace SortingVisualizer
         }
 
         // Insertion Sort
-        private async Task UpdateVisualizationGridInsertion(int[] data, int keyValue = -1, int compareIndex = -1, Color highlightColor = default)
+private Dictionary<int, bool> _sortedElements;
+
+public async Task InsertionSortVisual(int[] array, CancellationToken cancellationToken)
+{
+    // Initialize the dictionary to track sorted status
+    _sortedElements = new Dictionary<int, bool>();
+
+    foreach (var value in array)
+    {
+        if (!_sortedElements.ContainsKey(value))
         {
-            double maxHeight = 300; // Fixed maximum height for the bars
-            int maxDataValue = data.Max();
-
-            // Update existing children
-            for (int i = 0; i < data.Length; i++)
-            {
-                var stackLayout = VisualizationGrid.Children[i] as StackLayout;
-                var boxView = stackLayout.Children[0] as BoxView;
-                var label = stackLayout.Children[1] as Label;
-
-                // Reset default color for all elements
-                boxView.Color = Colors.CornflowerBlue;
-
-                // Color the bar containing the key value in coral until it finds its place
-                if (data[i] == keyValue)
-                {
-                    boxView.Color = Colors.Red;
-                }
-
-                // Color the comparison bar in orange only when actively compared
-                if (i == compareIndex)
-                {
-                    boxView.Color = Colors.Orange;
-                }
-
-                // Color the bar containing the key value in blueviolet when it reaches its final position
-                if (highlightColor == Colors.BlueViolet && data[i] == keyValue)
-                {
-                    boxView.Color = Colors.BlueViolet;
-                }
-
-                // Update height if needed
-                double relativeHeight = maxDataValue > 0 ? (data[i] / (double)maxDataValue) * (maxHeight * 0.9) : 0;
-                boxView.HeightRequest = relativeHeight;
-                label.Text = data[i].ToString();
-            }
-
-            // Optional: Add a small delay to make color changes visible
-            await Task.Delay(200);
+            _sortedElements[value] = false;
         }
+    }
 
-        public async Task InsertionSortVisual(int[] array, CancellationToken cancellationToken)
+    // Mark the first element as sorted
+    _sortedElements[array[0]] = true;
+    await UpdateVisualizationGridInsertion(array, array[0], -1, Colors.BlueViolet);
+
+    for (int i = 1; i < array.Length; i++)
+    {
+        int key = array[i];
+        int j = i - 1;
+
+        // Highlight the key value in red
+        await UpdateVisualizationGridInsertion(array, key, -1, Colors.Red);
+        await Task.Delay(500, cancellationToken);
+
+        // Continue while the current element is greater than the key and shift the elements
+        while (j >= 0 && array[j] > key)
         {
-            int key = array[1];
+            cancellationToken.ThrowIfCancellationRequested();
 
-            // Highlight the key value in coral
+            // Highlight the comparison bar in orange
+            await UpdateVisualizationGridInsertion(array, key, j, Colors.Orange);
+            await Task.Delay(500, cancellationToken);
+
+            // Swap elements visually
+            await SmoothSwap(j, j + 1);
+
+            // Perform the actual shift in the array
+            (array[j + 1], array[j]) = (array[j], array[j + 1]);
+
+            // Update the visualization - keep key red and reset comparison to default
             await UpdateVisualizationGridInsertion(array, key, -1, Colors.Red);
             await Task.Delay(500, cancellationToken);
 
-            for (int i = 1; i < array.Length; i++)
-            {
-                key = array[i];
-                int j = i - 1;
-
-                // Continue while the current element is greater than the key and shift the elements
-                while (j >= 0 && array[j] > key)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    // Highlight the comparison bar in orange
-                    await UpdateVisualizationGridInsertion(array, key, j, Colors.Orange);
-                    await Task.Delay(500, cancellationToken);
-
-                    // Swap elements visually
-                    await SmoothSwap(j, j + 1);
-
-                    // Perform the actual shift in the array
-                    (array[j + 1], array[j]) = (array[j], array[j + 1]);
-
-                    // Update the visualization - keep key coral and reset comparison to default
-                    await UpdateVisualizationGridInsertion(array, key, -1);
-                    await Task.Delay(500, cancellationToken);
-
-                    // Decrement `j` to continue comparing and shifting if necessary
-                    j--;
-                }
-
-                // Place the key in the correct position and color it blueviolet
-                array[j + 1] = key;
-                await UpdateVisualizationGridInsertion(array, key, -1, Colors.BlueViolet);
-                await Task.Delay(500, cancellationToken);
-            }
-
-            // Reset all to default color at the end
-            await UpdateVisualizationGridInsertion(array);
+            // Decrement `j` to continue comparing and shifting if necessary
+            j--;
         }
+
+        // Place the key in the correct position
+        array[j + 1] = key;
+
+        // Mark the element as sorted
+        _sortedElements[key] = true;
+
+        // Update the visualization with BlueViolet for sorted elements
+        await UpdateVisualizationGridInsertion(array, key, -1, Colors.BlueViolet);
+        await Task.Delay(500, cancellationToken);
+    }
+
+    // Ensure all sorted elements retain BlueViolet at the end
+    await UpdateVisualizationGridInsertion(array);
+}
+
+
+private async Task UpdateVisualizationGridInsertion(
+    int[] data,
+    int keyValue = -1,
+    int compareIndex = -1,
+    Color highlightColor = default)
+{
+    double maxHeight = 300; // Fixed maximum height for the bars
+    int maxDataValue = data.Max();
+
+    for (int i = 0; i < data.Length; i++)
+    {
+        var stackLayout = VisualizationGrid.Children[i] as StackLayout;
+        var boxView = stackLayout.Children[0] as BoxView;
+        var label = stackLayout.Children[1] as Label;
+
+        // Check if the element is sorted
+        if (_sortedElements.TryGetValue(data[i], out bool isSorted) && isSorted)
+        {
+            boxView.Color = Colors.BlueViolet; // Keep sorted elements as BlueViolet
+        }
+        else
+        {
+            // Reset to default color
+            boxView.Color = Colors.CornflowerBlue;
+        }
+
+        // Highlight the current element (key) in red
+        if (data[i] == keyValue)
+        {
+            boxView.Color = Colors.Red;
+        }
+
+        // Highlight the comparison bar in orange
+        if (i == compareIndex)
+        {
+            boxView.Color = Colors.Orange;
+        }
+
+        // Update the bar's height
+        double relativeHeight = maxDataValue > 0 ? (data[i] / (double)maxDataValue) * (maxHeight * 0.9) : 0;
+        boxView.HeightRequest = relativeHeight;
+
+        // Update the label
+        label.Text = data[i].ToString();
+    }
+
+    // Optional: Add a small delay to make color changes visible
+    await Task.Delay(200);
+}
 
 
         // Smooth Swap Animation
@@ -829,14 +866,14 @@ namespace SortingVisualizer
                 case "Quick Sort":
                     AddLegendItem(LegendGrid, "Pivot", Colors.Red, currentRow++);
                     AddLegendItem(LegendGrid, "Elements equal to pivot", Colors.Yellow, currentRow++);
-                    AddLegendItem(LegendGrid, "Elements less than pivot", Colors.Coral, currentRow++);
-                    AddLegendItem(LegendGrid, "Elements greater than pivot", Colors.Green, currentRow++);
+                    AddLegendItem(LegendGrid, "Elements less than pivot", Colors.Green, currentRow++);
+                    AddLegendItem(LegendGrid, "Elements greater than pivot", Colors.DarkBlue, currentRow++);
                     AddLegendItem(LegendGrid, "Current Comparison", Colors.Orange, currentRow++);
                     AddLegendItem(LegendGrid, "Sorted", Colors.BlueViolet, currentRow++);
                     break;
 
                 case "Insertion Sort":
-                    AddLegendItem(LegendGrid, "Current Minimum", Colors.Red, currentRow++);
+                    AddLegendItem(LegendGrid, "Current Element", Colors.Red, currentRow++);
                     AddLegendItem(LegendGrid, "Current Comparison", Colors.Orange, currentRow++);
                     AddLegendItem(LegendGrid, "Sorted", Colors.BlueViolet, currentRow++);
                     break;

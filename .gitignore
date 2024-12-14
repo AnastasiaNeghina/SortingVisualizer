@@ -45,3 +45,4 @@ packages/
 
 # Ignore any secrets
 secrets.json
+SortingVisualizer.sln
